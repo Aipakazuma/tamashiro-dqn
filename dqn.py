@@ -7,7 +7,14 @@ from collections import namedtuple, deque
 import random
 
 
+# openai gym
 ENV_NAME = 'Breakout-v0'
+
+# deep q network
+# 学習前に事前に確保するexperience replay
+INITIAL_REPLAY_SIZE = 2000
+
+# tensorflow command argument
 FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_bool("train", False,
                          """Start DQN training.""")
@@ -37,6 +44,7 @@ class Agent():
 
     def fit(self):
         # episode
+        action_steps = 0
         for n_episode in range(10):
             observation = self.env.reset()
             # step
@@ -53,6 +61,13 @@ class Agent():
                                                               terminal1=done))
                 # if LIMIT_EXPERIENCE < len(self.experience_memory):
                 #     self.experience_memory.popleft()
+
+                # action stepsがmemoryサイズを超えないと学習させない
+                # memoryサイズがある程度ないとmini batchが作れないため
+                if action_steps < INITIAL_REPLAY_SIZE:
+                    pass
+
+                action_steps += 1
 
                 # gameが終了したらbreakする
                 if done:
