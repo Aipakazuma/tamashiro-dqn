@@ -9,6 +9,7 @@ import random
 
 # openai gym
 ENV_NAME = 'Breakout-v0'
+np.seed(123)
 
 # deep q network
 # 学習前に事前に確保するexperience replay
@@ -95,6 +96,7 @@ def loss():
 def train():
     """Model training."""
     env = gym.make(ENV_NAME)
+    env.seed(123)
     agent = Agent(env=env, batch_size=32)
     agent.fit()
 
