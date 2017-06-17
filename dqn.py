@@ -2,6 +2,9 @@
 
 import tensorflow as tf
 import gym 
+import numpy as np
+from collections import namedtuple, deque
+import random
 
 
 ENV_NAME = 'Breakout-v0'
@@ -12,6 +15,51 @@ tf.app.flags.DEFINE_bool("test", False,
                          """Start DQN test.""")
 tf.app.flags.DEFINE_integer("max_steps", 10000,
                             """Execute max step number.""")
+
+
+class Agent():
+    """DQNのAgent."""
+
+    def __init__(self, env, batch_size):
+        """初期化."""
+        # experice memory
+        # keras rlを参考
+        self.experience = namedtuple('Experience',
+                                     'state0, action, reward, state1, terminal1')
+        self.experience_memory = deque()
+        self.env = env
+        self.batch_size = batch_size
+
+
+    def sampling(self):
+        return random.sample(self.experience_memory, self.batch_size)
+
+
+    def fit(self):
+        # episode
+        for n_episode in range(10):
+            observation = self.env.reset()
+            # step
+            for t in range(1000):
+                # observationを画面へ表示
+                self.env.render()
+                # actionを適当に決める
+                action = self.env.action_space.sample()
+                # actionを渡してstepし、次のobservation(s`)や報酬を受け取る
+                state0 = observation.copy()
+                observation, reward, done, info = self.env.step(action)
+                self.experience_memory.append(self.experience(state0=state0, action=action,
+                                                              reward=reward, state1=observation, 
+                                                              terminal1=done))
+                # if LIMIT_EXPERIENCE < len(self.experience_memory):
+                #     self.experience_memory.popleft()
+
+                # gameが終了したらbreakする
+                if done:
+                    print('Episode finished after %d timesteps' % (t + 1))
+                    break
+
+        self.env.close()
 
 
 def define_model():
@@ -29,33 +77,11 @@ def loss():
     pass
 
 
-def define_env():
-    """gym環境を取得"""
-    env = gym.make(ENV_NAME)
-    return env
-
-
 def train():
     """Model training."""
-    env = define_env()
-    # episode 
-    for n_episode in range(10):
-        observation = env.reset()
-        print(observation)
-        # step
-        for t in range(1000):
-            # observationを画面へ表示
-            env.render()
-            # actionを適当に決める
-            action = env.action_space.sample()
-            # actionを渡してstepし、次のobservation(s`)や報酬を受け取る
-            observation, reward, done, info = env.step(action)
-            # gameが終了したらbreakする
-            if done:
-                print('Episode finished after %d timesteps' % (t + 1))
-                break
-
-    env.close()
+    env = gym.make(ENV_NAME)
+    agent = Agent(env=env, batch_size=32)
+    agent.fit()
 
 
 def test():
