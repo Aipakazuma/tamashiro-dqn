@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 
 import tensorflow as tf
+import gym 
 
 
-FLAGS = tf.app.flags.FLAGS()
+ENV_NAME = 'Breakout-v0'
+FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_bool("train", False,
                          """Start DQN training.""")
 tf.app.flags.DEFINE_bool("test", False,
@@ -27,9 +29,27 @@ def loss():
     pass
 
 
+def define_env():
+    """gym環境を取得"""
+    env = gym.make(ENV_NAME)
+    return env
+
+
 def train():
     """Model training."""
-    pass
+    env = define_env()
+    print(env)
+    for n_episode in range(10):
+        observation = env.reset()
+        for t in range(1000):
+            env.render()
+            action = env.action_space.sample()
+            observation, reward, done, info = env.step(action)
+            if done:
+                print('Episode finished after %d timesteps' % (t + 1))
+                break
+
+    env.close()
 
 
 def test():
@@ -44,6 +64,7 @@ def main(argv=None):
 
     if FLAGS.test:
         test()
+
 
 if __name__ == '__main__':
     tf.app.run()
