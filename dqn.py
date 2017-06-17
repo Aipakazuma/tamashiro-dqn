@@ -38,13 +38,19 @@ def define_env():
 def train():
     """Model training."""
     env = define_env()
-    print(env)
+    # episode 
     for n_episode in range(10):
         observation = env.reset()
+        print(observation)
+        # step
         for t in range(1000):
+            # observationを画面へ表示
             env.render()
+            # actionを適当に決める
             action = env.action_space.sample()
+            # actionを渡してstepし、次のobservation(s`)や報酬を受け取る
             observation, reward, done, info = env.step(action)
+            # gameが終了したらbreakする
             if done:
                 print('Episode finished after %d timesteps' % (t + 1))
                 break
