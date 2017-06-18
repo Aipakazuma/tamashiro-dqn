@@ -126,13 +126,13 @@ class Agent():
         v_action = tf.placeholder(tf.int64, [None])
         y = tf.placeholder(tf.float32, [None])
         # q networkの構築
-        logits, q_network_weights = self.inference(x, 'q_network')
+        q_network, q_network_weights = self.inference(x, 'q_network')
         # target networkの構築
-        q_values, target_network_weights = self.inference(s, 'target_network')
+        target_network, target_network_weights = self.inference(s, 'target_network')
         # target networkの更新
         self.update_target_network = [target_network_weights[i].assign(q_network_weights[i]) \
                                       for i in range(len(target_network_weights))]
-        loss = self.loss(v_action, y, q_values)
+        loss = self.loss(v_action, y, q_network)
         train = self.training(loss, q_network_weights)
 
         self.sess = tf.Session()
