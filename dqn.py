@@ -110,7 +110,7 @@ class Agent():
 
 
     def sampling(self):
-        return random.sample(self.experience_memory, self.batch_size)
+        return random.sample(list(self.experience_memory), self.batch_size)
 
 
     def fit(self):
@@ -143,7 +143,6 @@ class Agent():
         with self.sess.as_default():
             for n_episode in range(10):
                 observation = self.env.reset()
-                print(observation.shape)
                 # step
                 for t in range(1000):
                     # observationを画面へ表示
@@ -161,13 +160,12 @@ class Agent():
 
                     # action stepsがmemoryサイズを超えないと学習させない
                     # memoryサイズがある程度ないとmini batchが作れないため
-                    if action_steps < INITIAL_REPLAY_SIZE:
-                        if action_steps < TRAIN_INTERVAL:
+                    if INITIAL_REPLAY_SIZE < action_steps:
+                        if action_steps % TRAIN_INTERVAL is 0:
                             # training
                             mini_batch = self.sampling()
-                            print(mini_batch)
 
-                        if action_steps < TARGET_UPDATE_INTERVAL:
+                        if action_steps % TARGET_UPDATE_INTERVAL is 0:
                             # target_networkのupdate
                             # self.sess.run([self.update_target_network])
                             pass

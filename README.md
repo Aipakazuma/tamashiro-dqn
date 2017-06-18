@@ -24,3 +24,11 @@
 
 * [DQNをKerasとTensorFlowとOpenAI Gymで実装する](https://elix-tech.github.io/ja/2016/06/29/dqn-ja.html)
   * ここのコードをほぼ丸パクリ
+
+
+# Error List
+
+* TypeError: Population must be a sequence or set.  For dicts, use list(d).
+  * [https://stackoverflow.com/questions/40181284/how-to-get-random-sample-from-deque-in-python-3](https://stackoverflow.com/questions/40181284/how-to-get-random-sample-from-deque-in-python-3)
+  * `random.sample()`にはlistで渡してね
+* ValueError: Sample larger than population
