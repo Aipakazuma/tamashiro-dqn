@@ -5,6 +5,7 @@ import gym
 import numpy as np
 from collections import namedtuple, deque
 import random
+import cv2
 
 
 # openai gym
@@ -21,6 +22,7 @@ LEARNING_RATE = 0.00025  # RMSPropで使われる学習率
 MOMENTUM = 0.95  # RMSPropで使われるモメンタム
 MIN_GRAD = 0.01  # RMSPropで使われる0で割るのを防ぐための値
 LIMIT_EXPERIENCE = 400000  # Reply memoryの上限
+GAMMA = 0.99  # 割引率
 
 # tensorflow command argument
 FLAGS = tf.app.flags.FLAGS
@@ -114,6 +116,18 @@ class Agent():
         return random.sample(list(self.experience_memory), self.batch_size)
 
 
+    def preprocessing(self, observation, last_observation):
+        processed_observation = np.maximum(observation, last_observation)
+        resize = cv2.resize(cv2.cvtColor(processed_observation, cv2.COLOR_RGB2GRAY), (84, 84))
+        return np.uint8(resize) * 255
+        
+
+    def get_initial_state(self, observation, last_observation):
+        processed_observation = self.preprocessing(observation, last_observation)
+        state = [processed_observation for _ in range(WINDOW_LENGTH)]
+        return np.stack(state, axis=0)
+
+
     def fit(self):
         # episode
         action_steps = 0
@@ -121,7 +135,8 @@ class Agent():
         # モデルの設定
         # observation -> (210, 160, 3)
         preprocess_x = tf.placeholder(tf.float32, shape=self.env.observation_space.shape)
-        preprocessing = tf.reshape(preprocess_x, shape=[100800])
+        preprocess_x = tf.reshape(preprocess_x, shape=[100800])
+
         x = tf.placeholder(tf.float32, shape=(None, WINDOW_LENGTH, 100800))
         s = tf.placeholder(tf.float32, shape=(None, WINDOW_LENGTH, 100800))
         v_action = tf.placeholder(tf.int64, [None])
@@ -144,22 +159,34 @@ class Agent():
         with self.sess.as_default():
             for n_episode in range(FLAGS.max_episode):
                 observation = self.env.reset()
+
+                for _ in range(random.randint(1, 30)):
+                    last_observation = observation.copy()
+                    observation, _, _, _ = self.env.step(0)
+
+                state0 = self.get_initial_state(observation, last_observation)
+
                 # step
                 done = False
                 step = 0
                 while not done:
+                    last_observation = observation.copy()
                     # observationを画面へ表示
                     self.env.render()
                     # actionを適当に決める
+                    # state0はここで利用する予定
                     action = self.env.action_space.sample()
                     # actionを渡してstepし、次のobservation(s`)や報酬を受け取る
-                    state0 = observation.copy()
                     observation, reward, done, info = self.env.step(action)
+                    preprocessed_observation = np.reshape(self.preprocessing(observation, last_observation), (1, 84, 84))
                     self.experience_memory.append(self.experience(state0=state0, action=action,
-                                                                  reward=reward, state1=observation, 
+                                                                  reward=reward, state1=preprocessed_observation,
                                                                   terminal1=done))
                     if LIMIT_EXPERIENCE < len(self.experience_memory):
                         self.experience_memory.popleft()
+
+                    # 次の状態を作成する
+                    state0 = np.append(state0[1:, :, :], preprocessed_observation, axis=0)
 
                     # action stepsがmemoryサイズを超えないと学習させない
                     # memoryサイズがある程度ないとmini batchが作れないため
@@ -167,6 +194,30 @@ class Agent():
                         if action_steps % TRAIN_INTERVAL is 0:
                             # training
                             mini_batch = self.sampling()
+                            state0_batch = []
+                            action_batch = []
+                            reward_batch = []
+                            state1_batch = []
+                            terminal1_batch = []
+                            for batch in mini_batch:
+                                state0_batch.append(batch.state0)
+                                action_batch.append(batch.action)
+                                reward_batch.append(batch.reward)
+                                state1_batch.append(batch.state1)
+                                terminal1_batch.append(batch.terminal1)
+
+                            terminal1_batch = np.array(terminal1_batch, dtype=np.int8) + 0
+                            calc_pass_q_value = np.array(state1_batch, dtype=np.float32)
+                            q_value_batch = q_network.eval(feed_dict={x: calc_pass_q_value})
+                            y_batch = reward_batch + (1 - terminal1_batch) * GAMMA * np.max(q_value_batch, axis=1)
+
+                            state_batch = np.array(state0_batch, dtype=np.float32).reshape(32, 1, 210*160*3)
+                            _loss, _ = self.sess.run([loss, gradient_update], feed_dict={
+                                s: state_batch,
+                                v_action: action_batch,
+                                y: y_batch})
+                            print(_loss)
+
 
                         if action_steps % TARGET_UPDATE_INTERVAL is 0:
                             # target_networkのupdate
