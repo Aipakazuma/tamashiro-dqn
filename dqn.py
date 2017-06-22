@@ -28,7 +28,7 @@ tf.app.flags.DEFINE_bool("train", False,
                          """Start DQN training.""")
 tf.app.flags.DEFINE_bool("test", False,
                          """Start DQN test.""")
-tf.app.flags.DEFINE_integer("max_steps", 10000,
+tf.app.flags.DEFINE_integer("max_episode", 10,
                             """Execute max step number.""")
 
 
@@ -142,7 +142,7 @@ class Agent():
         self.sess.run([self.update_target_network])
 
         with self.sess.as_default():
-            for n_episode in range(10):
+            for n_episode in range(FLAGS.max_episode):
                 observation = self.env.reset()
                 # step
                 done = False
