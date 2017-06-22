@@ -20,10 +20,12 @@
 [Best Experience Replay](http://qiita.com/ashitani/items/bb393e24c20e83e54577#best-experience-replay)
 
 
+
 # Reference
 
-* [DQNをKerasとTensorFlowとOpenAI Gymで実装する](https://elix-tech.github.io/ja/2016/06/29/dqn-ja.html)
+* [DQNをKerasとTensorFlowとOpenAI Gymで実装する](https://elix-tech.github.io/ja/2016/06/30/dqn-ja.html)
   * ここのコードをほぼ丸パクリ
+
 
 
 # Error List
