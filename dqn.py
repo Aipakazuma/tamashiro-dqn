@@ -20,6 +20,7 @@ WINDOW_LENGTH = 4
 LEARNING_RATE = 0.00025  # RMSPropで使われる学習率
 MOMENTUM = 0.95  # RMSPropで使われるモメンタム
 MIN_GRAD = 0.01  # RMSPropで使われる0で割るのを防ぐための値
+LIMIT_EXPERIENCE = 400000  # Reply memoryの上限
 
 # tensorflow command argument
 FLAGS = tf.app.flags.FLAGS
@@ -144,7 +145,9 @@ class Agent():
             for n_episode in range(10):
                 observation = self.env.reset()
                 # step
-                for t in range(1000):
+                done = False
+                step = 0
+                while not done:
                     # observationを画面へ表示
                     self.env.render()
                     # actionを適当に決める
@@ -155,8 +158,8 @@ class Agent():
                     self.experience_memory.append(self.experience(state0=state0, action=action,
                                                                   reward=reward, state1=observation, 
                                                                   terminal1=done))
-                    # if LIMIT_EXPERIENCE < len(self.experience_memory):
-                    #     self.experience_memory.popleft()
+                    if LIMIT_EXPERIENCE < len(self.experience_memory):
+                        self.experience_memory.popleft()
 
                     # action stepsがmemoryサイズを超えないと学習させない
                     # memoryサイズがある程度ないとmini batchが作れないため
@@ -167,15 +170,14 @@ class Agent():
 
                         if action_steps % TARGET_UPDATE_INTERVAL is 0:
                             # target_networkのupdate
-                            # self.sess.run([self.update_target_network])
-                            pass
+                            self.sess.run([self.update_target_network])
 
                     action_steps += 1
+                    step += 1
 
-                    # gameが終了したらbreakする
+                    # episode終了
                     if done:
-                        print('Episode finished after %d timesteps' % (t + 1))
-                        break
+                        print('Episode finished after %d timesteps' % (step + 1))
 
         self.env.close()
 
