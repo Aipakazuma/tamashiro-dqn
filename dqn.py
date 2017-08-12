@@ -14,7 +14,7 @@ np.random.seed(123)
 
 # deep q network
 # 学習前に事前に確保するexperience replay
-INITIAL_REPLAY_SIZE = 2000
+INITIAL_REPLAY_SIZE = 50
 TRAIN_INTERVAL = 200
 TARGET_UPDATE_INTERVAL = 500
 WINDOW_LENGTH = 4
@@ -67,10 +67,10 @@ class Agent():
 
 
         with tf.name_scope('flatten'):
-            flatten = tf.reshape(x, shape=[-1, 100800])
+            flatten = tf.reshape(x, shape=[-1, 12096])
 
         with tf.name_scope('fc1'):
-            weights = _get_weights(name='fc1', shape=[100800, 32])
+            weights = _get_weights(name='fc1', shape=[12096, 32])
             biases = _get_biases(name='fc1', shape=[32])
             fc1 = tf.nn.relu(tf.matmul(flatten, weights) + biases)
             weights_list.append(weights)
@@ -117,9 +117,14 @@ class Agent():
 
 
     def preprocessing(self, observation, last_observation):
+        """ゲームの画面が大きいのでresize.
+        210x160x3 -> gray scale -> resie(126, 96)(*0.6)
+        """
         processed_observation = np.maximum(observation, last_observation)
-        resize = cv2.resize(cv2.cvtColor(processed_observation, cv2.COLOR_RGB2GRAY), (84, 84))
-        return np.uint8(resize) * 255
+        gray_scale = cv2.cvtColor(processed_observation, cv2.COLOR_RGB2GRAY)
+        resize = cv2.resize(gray_scale, (126, 96))
+        # 何故かresizeすると行列の位置が転置されるので修正
+        return np.uint8(resize).reshape(126, 96) * 255
         
 
     def get_initial_state(self, observation, last_observation):
@@ -134,11 +139,11 @@ class Agent():
 
         # モデルの設定
         # observation -> (210, 160, 3)
-        preprocess_x = tf.placeholder(tf.float32, shape=self.env.observation_space.shape)
-        preprocess_x = tf.reshape(preprocess_x, shape=[100800])
+        # preprocess_x = tf.placeholder(tf.float32, shape=self.env.observation_space.shape)
+        # preprocess_x = tf.reshape(preprocess_x, shape=[12096])
 
-        x = tf.placeholder(tf.float32, shape=(None, WINDOW_LENGTH, 100800))
-        s = tf.placeholder(tf.float32, shape=(None, WINDOW_LENGTH, 100800))
+        x = tf.placeholder(tf.float32, shape=(None, WINDOW_LENGTH, 12096))
+        s = tf.placeholder(tf.float32, shape=(None, WINDOW_LENGTH, 12096))
         v_action = tf.placeholder(tf.int64, [None])
         y = tf.placeholder(tf.float32, [None])
         # q networkの構築
@@ -169,6 +174,7 @@ class Agent():
                 # step
                 done = False
                 step = 0
+
                 while not done:
                     last_observation = observation.copy()
                     # observationを画面へ表示
@@ -178,15 +184,19 @@ class Agent():
                     action = self.env.action_space.sample()
                     # actionを渡してstepし、次のobservation(s`)や報酬を受け取る
                     observation, reward, done, info = self.env.step(action)
-                    preprocessed_observation = np.reshape(self.preprocessing(observation, last_observation), (1, 84, 84))
+
+                    # 次の状態を作成する
+                    # processed_observation は、window lengthが考慮されていないので、次元を増やす
+                    preprocessed_observation = self.preprocessing(observation, last_observation)
+                    state1 = np.append(state0[1:, :, :], [preprocessed_observation], axis=0)
+
                     self.experience_memory.append(self.experience(state0=state0, action=action,
-                                                                  reward=reward, state1=preprocessed_observation,
+                                                                  reward=reward, state1=state1,
                                                                   terminal1=done))
                     if LIMIT_EXPERIENCE < len(self.experience_memory):
                         self.experience_memory.popleft()
 
-                    # 次の状態を作成する
-                    state0 = np.append(state0[1:, :, :], preprocessed_observation, axis=0)
+                    state0 = state1
 
                     # action stepsがmemoryサイズを超えないと学習させない
                     # memoryサイズがある程度ないとmini batchが作れないため
@@ -208,10 +218,11 @@ class Agent():
 
                             terminal1_batch = np.array(terminal1_batch, dtype=np.int8) + 0
                             calc_pass_q_value = np.array(state1_batch, dtype=np.float32)
-                            q_value_batch = q_network.eval(feed_dict={x: calc_pass_q_value})
+                            q_value_batch = q_network.eval(feed_dict={x: calc_pass_q_value.reshape(32, 4, -1)})
                             y_batch = reward_batch + (1 - terminal1_batch) * GAMMA * np.max(q_value_batch, axis=1)
 
-                            state_batch = np.array(state0_batch, dtype=np.float32).reshape(32, 1, 210*160*3)
+                            state_batch = np.array(state0_batch, dtype=np.float32)
+                            print(state_batch.shape)
                             _loss, _ = self.sess.run([loss, gradient_update], feed_dict={
                                 s: state_batch,
                                 v_action: action_batch,
