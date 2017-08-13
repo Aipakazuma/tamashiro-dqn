@@ -8,6 +8,7 @@
 
 * DQNの実装
 * Epsilon greedyの実装
+* fixed target networkの実装
 
 
 
@@ -20,15 +21,19 @@
 [Best Experience Replay](http://qiita.com/ashitani/items/bb393e24c20e83e54577#best-experience-replay)
 
 
+## Fixed target network
+
+## Epsilon greedy
 
 # Reference
 
-* [DQNをKerasとTensorFlowとOpenAI Gymで実装する](https://elix-tech.github.io/ja/2016/06/30/dqn-ja.html)
+* [DQNをKerasとTensorFlowとOpenAI Gymで実装する](https://elix-tech.github.io/ja/2016/06/29/dqn-ja.html)
   * ここのコードをほぼ丸パクリ
 
 
 
 # Error List
+
 
 * TypeError: Population must be a sequence or set.  For dicts, use list(d).
   * [https://stackoverflow.com/questions/40181284/how-to-get-random-sample-from-deque-in-python-3](https://stackoverflow.com/questions/40181284/how-to-get-random-sample-from-deque-in-python-3)
