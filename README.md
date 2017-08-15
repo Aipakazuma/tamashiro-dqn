@@ -4,6 +4,12 @@
 
 
 
+# Usage
+
+```sh
+$ python dqn.py --train --max_episode 100
+```
+
 # Todo
 
 * DQNの実装
